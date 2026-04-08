@@ -1,0 +1,96 @@
+import { UserProfile } from "@/components/SwipeCard";
+
+export const mockUsers: UserProfile[] = [
+  {
+    id: "1",
+    name: "Ana",
+    age: 24,
+    city: "Zagreb",
+    bio: "Studentica ekonomije, volim jezike i glazbu!",
+    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&h=800&fit=crop",
+    trustLevel: 3,
+    rating: 4.8,
+    skillsTeach: ["Engleski", "Španjolski"],
+    skillsLearn: ["Gitara", "Kuhanje"],
+  },
+  {
+    id: "2",
+    name: "Marko",
+    age: 28,
+    city: "Zagreb",
+    bio: "Frontend developer, učim ljude programiranju.",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=800&fit=crop",
+    trustLevel: 2,
+    rating: 4.5,
+    skillsTeach: ["JavaScript", "React"],
+    skillsLearn: ["Fotografija", "Njemački"],
+  },
+  {
+    id: "3",
+    name: "Ivana",
+    age: 22,
+    city: "Split",
+    bio: "Volim sport i kreativnost! 🎨",
+    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=600&h=800&fit=crop",
+    trustLevel: 1,
+    rating: 4.2,
+    skillsTeach: ["Yoga", "Crtanje"],
+    skillsLearn: ["Python", "Francuski"],
+  },
+  {
+    id: "4",
+    name: "Luka",
+    age: 26,
+    city: "Zagreb",
+    bio: "Glazbenik i teacher gitare 🎸",
+    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&h=800&fit=crop",
+    trustLevel: 3,
+    rating: 4.9,
+    skillsTeach: ["Gitara", "Piano"],
+    skillsLearn: ["Web dizajn", "Marketing"],
+  },
+  {
+    id: "5",
+    name: "Petra",
+    age: 30,
+    city: "Rijeka",
+    bio: "Profesorica engleskog, volim putovanja!",
+    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&h=800&fit=crop",
+    trustLevel: 2,
+    rating: 4.7,
+    skillsTeach: ["Engleski", "Talijanski"],
+    skillsLearn: ["Programiranje", "Fotografija"],
+  },
+];
+
+export const mockMatches = [
+  {
+    id: "m1",
+    user: mockUsers[0],
+    lastMessage: "Super, možemo se naći u četvrtak? 😊",
+    timestamp: "14:30",
+    unread: 2,
+  },
+  {
+    id: "m2",
+    user: mockUsers[3],
+    lastMessage: "Hvala na lekciji!",
+    timestamp: "jučer",
+    unread: 0,
+  },
+  {
+    id: "m3",
+    user: mockUsers[4],
+    lastMessage: "Počinjemo u ponedjeljak?",
+    timestamp: "pon",
+    unread: 1,
+  },
+];
+
+export const mockMessages = [
+  { id: "1", senderId: "1", content: "Bok! Vidim da želiš naučiti gitaru 🎸", time: "14:20" },
+  { id: "2", senderId: "me", content: "Da! Uvijek sam htio naučiti. Ti učiš engleski?", time: "14:22" },
+  { id: "3", senderId: "1", content: "Da, trebam za posao. Možemo razmijeniti lekcije!", time: "14:25" },
+  { id: "4", senderId: "me", content: "Odlično! Kad ti paše?", time: "14:28" },
+  { id: "5", senderId: "1", content: "Super, možemo se naći u četvrtak? 😊", time: "14:30" },
+];
