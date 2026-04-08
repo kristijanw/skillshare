@@ -1,18 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Shield, Sparkles, Users, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
-const allSkills = [
-  "Engleski", "Njemački", "Španjolski", "Francuski", "Talijanski",
-  "JavaScript", "Python", "React", "Web dizajn",
-  "Gitara", "Piano", "Pjevanje",
-  "Fotografija", "Crtanje", "Kuhanje",
-  "Yoga", "Fitness", "Marketing",
-];
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const steps = [
   { title: "Dobrodošli", subtitle: "Razmijenite vještine s ljudima oko vas" },
@@ -24,7 +18,10 @@ const steps = [
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [step, setStep] = useState(0);
+  const [allSkills, setAllSkills] = useState<{ id: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     age: "",
@@ -32,6 +29,16 @@ const Onboarding = () => {
     teachSkills: [] as string[],
     learnSkills: [] as string[],
   });
+
+  useEffect(() => {
+    supabase.from("skills").select("id, name").then(({ data }) => {
+      if (data) setAllSkills(data);
+    });
+    // Pre-fill name from auth metadata
+    if (user?.user_metadata?.full_name) {
+      setFormData((prev) => ({ ...prev, name: user.user_metadata.full_name }));
+    }
+  }, [user]);
 
   const toggleSkill = (skill: string, type: "teachSkills" | "learnSkills") => {
     setFormData((prev) => ({
@@ -53,14 +60,42 @@ const Onboarding = () => {
     }
   };
 
+  const saveOnboarding = async () => {
+    if (!user) return;
+
+    // Update profile
+    await supabase.from("profiles").update({
+      name: formData.name,
+      age: Number(formData.age),
+      city: formData.city,
+    }).eq("user_id", user.id);
+
+    // Save skills
+    const skillMap = new Map(allSkills.map((s) => [s.name, s.id]));
+
+    const teachInserts = formData.teachSkills
+      .filter((name) => skillMap.has(name))
+      .map((name) => ({ user_id: user.id, skill_id: skillMap.get(name)!, type: "teach" as const }));
+
+    const learnInserts = formData.learnSkills
+      .filter((name) => skillMap.has(name))
+      .map((name) => ({ user_id: user.id, skill_id: skillMap.get(name)!, type: "learn" as const }));
+
+    if (teachInserts.length > 0 || learnInserts.length > 0) {
+      await supabase.from("user_skills").insert([...teachInserts, ...learnInserts]);
+    }
+
+    toast({ title: "Profil spremljen! 🎉" });
+    navigate("/discover");
+  };
+
   const nextStep = () => {
     if (step < steps.length - 1) setStep(step + 1);
-    else navigate("/discover");
+    else saveOnboarding();
   };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Progress bar */}
       <div className="px-6 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="flex gap-1.5">
           {steps.map((_, i) => (
@@ -88,7 +123,6 @@ const Onboarding = () => {
             <p className="mt-1 text-muted-foreground">{steps[step].subtitle}</p>
 
             <div className="mt-8 flex-1">
-              {/* Step 0: Welcome */}
               {step === 0 && (
                 <div className="space-y-6">
                   <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full gradient-warm shadow-glow animate-pulse-glow">
@@ -117,7 +151,6 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 1: About you */}
               {step === 1 && (
                 <div className="space-y-5">
                   <div>
@@ -155,15 +188,14 @@ const Onboarding = () => {
                 </div>
               )}
 
-              {/* Step 2: Teach skills */}
               {step === 2 && (
                 <div className="flex flex-wrap gap-2">
                   {allSkills.map((skill) => {
-                    const selected = formData.teachSkills.includes(skill);
+                    const selected = formData.teachSkills.includes(skill.name);
                     return (
                       <button
-                        key={skill}
-                        onClick={() => toggleSkill(skill, "teachSkills")}
+                        key={skill.id}
+                        onClick={() => toggleSkill(skill.name, "teachSkills")}
                         className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
                           selected
                             ? "bg-primary text-primary-foreground shadow-card"
@@ -171,22 +203,21 @@ const Onboarding = () => {
                         }`}
                       >
                         {selected && <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />}
-                        {skill}
+                        {skill.name}
                       </button>
                     );
                   })}
                 </div>
               )}
 
-              {/* Step 3: Learn skills */}
               {step === 3 && (
                 <div className="flex flex-wrap gap-2">
                   {allSkills.map((skill) => {
-                    const selected = formData.learnSkills.includes(skill);
+                    const selected = formData.learnSkills.includes(skill.name);
                     return (
                       <button
-                        key={skill}
-                        onClick={() => toggleSkill(skill, "learnSkills")}
+                        key={skill.id}
+                        onClick={() => toggleSkill(skill.name, "learnSkills")}
                         className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
                           selected
                             ? "bg-accent text-accent-foreground shadow-card"
@@ -194,21 +225,20 @@ const Onboarding = () => {
                         }`}
                       >
                         {selected && <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />}
-                        {skill}
+                        {skill.name}
                       </button>
                     );
                   })}
                 </div>
               )}
 
-              {/* Step 4: Safety */}
               {step === 4 && (
                 <div className="space-y-4">
                   {[
-                    { emoji: "📍", text: "Uvijek se nalazite na javnom mjestu" },
-                    { emoji: "🔒", text: "Ne dijelite osobne podatke odmah" },
-                    { emoji: "🚨", text: "Prijavite sumnjive korisnike" },
-                    { emoji: "✅", text: "Verificirajte profil za veće povjerenje" },
+                    { emoji: "📹", text: "Koristi videopoziv za prvu lekciju ako ti je ugodnije" },
+                    { emoji: "🔒", text: "Ne dijeli osobne podatke odmah" },
+                    { emoji: "🚨", text: "Prijavi sumnjive korisnike" },
+                    { emoji: "✅", text: "Verificiraj profil za veće povjerenje" },
                   ].map(({ emoji, text }, i) => (
                     <motion.div
                       key={text}
@@ -227,7 +257,6 @@ const Onboarding = () => {
           </motion.div>
         </AnimatePresence>
 
-        {/* Next button */}
         <Button
           onClick={nextStep}
           disabled={!canProceed()}
