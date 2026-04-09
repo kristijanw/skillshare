@@ -96,6 +96,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          onboarding_completed: boolean
           profile_image_url: string | null
           trust_level: number
           updated_at: string
@@ -108,6 +109,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          onboarding_completed?: boolean
           profile_image_url?: string | null
           trust_level?: number
           updated_at?: string
@@ -120,6 +122,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          onboarding_completed?: boolean
           profile_image_url?: string | null
           trust_level?: number
           updated_at?: string
