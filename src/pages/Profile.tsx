@@ -83,15 +83,13 @@ const Profile = () => {
         profileImageUrl = urlData.publicUrl;
       }
 
-      const updates: Record<string, any> = {
+      await supabase.from("profiles").update({
         name: form.name.trim(),
         age: form.age ? Number(form.age) : null,
         city: form.city.trim(),
         bio: form.bio.trim(),
-      };
-      if (profileImageUrl) updates.profile_image_url = profileImageUrl;
-
-      await supabase.from("profiles").update(updates).eq("user_id", user.id);
+        ...(profileImageUrl ? { profile_image_url: profileImageUrl } : {}),
+      }).eq("user_id", user.id);
 
       // Update skills
       await supabase.from("user_skills").delete().eq("user_id", user.id);

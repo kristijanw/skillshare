@@ -98,16 +98,14 @@ const Onboarding = () => {
       }
 
       // Update profile
-      const profileUpdate: Record<string, any> = {
+      await supabase.from("profiles").update({
         name: formData.name.trim(),
         age: Number(formData.age),
         city: formData.city.trim(),
         bio: formData.bio.trim(),
         onboarding_completed: true,
-      };
-      if (profileImageUrl) profileUpdate.profile_image_url = profileImageUrl;
-
-      await supabase.from("profiles").update(profileUpdate).eq("user_id", user.id);
+        ...(profileImageUrl ? { profile_image_url: profileImageUrl } : {}),
+      }).eq("user_id", user.id);
 
       // Delete existing skills and re-insert
       await supabase.from("user_skills").delete().eq("user_id", user.id);
