@@ -14,7 +14,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", name: "" });
   const [onboardingChecked, setOnboardingChecked] = useState(false);
@@ -153,9 +153,7 @@ const Auth = () => {
           </Button>
         </form>
 
-        <button onClick={() => setIsLogin(!isLogin)} className="mt-4 text-sm text-muted-foreground hover:text-foreground">
-          {isLogin ? "Nemaš račun? Registriraj se" : "Već imaš račun? Prijavi se"}
-        </button>
+
       </motion.div>
     </div>
   );
