@@ -153,9 +153,7 @@ const Auth = () => {
           </Button>
         </form>
 
-        <button onClick={() => setIsLogin(!isLogin)} className="mt-4 text-sm text-muted-foreground hover:text-foreground">
-          {isLogin ? "Nemaš račun? Registriraj se" : "Već imaš račun? Prijavi se"}
-        </button>
+
       </motion.div>
     </div>
   );
