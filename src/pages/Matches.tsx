@@ -54,16 +54,13 @@ const Matches = () => {
     );
     const lastMsgResults = await Promise.all(lastMsgPromises);
 
-    // Count unread (messages from other user - simple approach: messages I haven't "seen")
-    // For now, we'll count messages from the other user after the last message I sent
+    // Count unread: messages from other user after last time I opened this chat
     const unreadPromises = matchRows.map(async (m) => {
       const otherId = m.user1_id === user.id ? m.user2_id : m.user1_id;
-      // Get my last sent message time
-      const { data: myLast } = await supabase.from("messages").select("created_at").eq("match_id", m.id).eq("sender_id", user.id).order("created_at", { ascending: false }).limit(1);
-      const myLastTime = myLast?.[0]?.created_at;
+      const lastRead = localStorage.getItem(`read_${m.id}`);
 
       let query = supabase.from("messages").select("id", { count: "exact", head: true }).eq("match_id", m.id).eq("sender_id", otherId);
-      if (myLastTime) query = query.gt("created_at", myLastTime);
+      if (lastRead) query = query.gt("created_at", lastRead);
       const { count } = await query;
       return count ?? 0;
     });
@@ -125,13 +122,13 @@ const Matches = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-24">
-      <header className="px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))]">
+    <div className="flex h-screen flex-col bg-background overflow-hidden">
+      <header className="px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] shrink-0">
         <h1 className="text-2xl font-bold font-display text-foreground">Razgovori</h1>
         <p className="text-sm text-muted-foreground">Tvoji matchevi i poruke</p>
       </header>
 
-      <div className="flex-1 px-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-24">
         {matches.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <p className="text-lg font-semibold text-foreground">Još nema matcheva</p>

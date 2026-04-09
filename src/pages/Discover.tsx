@@ -132,7 +132,7 @@ const Discover = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col bg-background overflow-hidden">
       <header className="flex items-center justify-between px-5 pb-2 pt-[max(1rem,env(safe-area-inset-top))]">
         <h1 className="text-2xl font-bold font-display text-foreground">
           Skill<span className="text-primary">Swap</span>

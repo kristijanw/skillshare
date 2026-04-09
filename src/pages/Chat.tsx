@@ -37,6 +37,9 @@ const Chat = () => {
   useEffect(() => {
     if (!matchId || !user) return;
 
+    // Mark chat as read
+    localStorage.setItem(`read_${matchId}`, new Date().toISOString());
+
     const fetchMatch = async () => {
       const { data: match } = await supabase
         .from("matches")

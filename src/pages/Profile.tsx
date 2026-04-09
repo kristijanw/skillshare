@@ -143,10 +143,11 @@ const Profile = () => {
   const avatarSrc = imagePreview ?? profile?.profile_image_url ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.user_id}`;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-24">
+    <div className="flex h-screen flex-col bg-background overflow-hidden">
       <div className="relative h-36 gradient-warm" />
 
-      <div className="relative mx-auto -mt-16 w-full max-w-md px-5">
+      <div className="flex-1 overflow-y-auto">
+      <div className="relative mx-auto -mt-16 w-full max-w-md px-5 pb-28">
         {/* Avatar */}
         <div className="relative inline-block">
           <img src={avatarSrc} alt={profile?.name ?? ""} className="h-28 w-28 rounded-full border-4 border-background object-cover shadow-elevated" />
@@ -285,6 +286,7 @@ const Profile = () => {
         )}
       </div>
 
+      </div>
       <BottomNav />
     </div>
   );
