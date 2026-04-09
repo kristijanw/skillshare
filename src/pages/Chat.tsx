@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Flag, Ban, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,7 +29,10 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [otherUser, setOtherUser] = useState<{ name: string; image: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!matchId || !user) return;
@@ -70,7 +73,6 @@ const Chat = () => {
 
     fetchMatch();
 
-    // Realtime subscription for instant messages
     const channel = supabase
       .channel(`chat-${matchId}`)
       .on(
@@ -79,33 +81,45 @@ const Chat = () => {
         (payload) => {
           const newMsg = payload.new as Message;
           setMessages((prev) => {
-            // Avoid duplicates
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
         }
       )
+      .on("broadcast", { event: "typing" }, ({ payload }) => {
+        if (payload.user_id === user.id) return;
+        setIsOtherTyping(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => setIsOtherTyping(false), 2000);
+      })
       .subscribe();
+
+    channelRef.current = channel;
 
     return () => {
       supabase.removeChannel(channel);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, [matchId, user]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isOtherTyping]);
+
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    channelRef.current?.send({
+      type: "broadcast",
+      event: "typing",
+      payload: { user_id: user?.id },
+    });
+  };
 
   const handleSend = async () => {
     if (!newMessage.trim() || !user || !matchId) return;
     const content = newMessage.trim();
     setNewMessage("");
-
-    await supabase.from("messages").insert({
-      match_id: matchId,
-      sender_id: user.id,
-      content,
-    });
+    await supabase.from("messages").insert({ match_id: matchId, sender_id: user.id, content });
   };
 
   const handleReport = async () => {
@@ -113,11 +127,7 @@ const Chat = () => {
     const { data: match } = await supabase.from("matches").select("*").eq("id", matchId).single();
     if (!match) return;
     const otherId = match.user1_id === user.id ? match.user2_id : match.user1_id;
-    await supabase.from("reports").insert({
-      reporter_id: user.id,
-      reported_user_id: otherId,
-      reason: "Prijavljeno iz chata",
-    });
+    await supabase.from("reports").insert({ reporter_id: user.id, reported_user_id: otherId, reason: "Prijavljeno iz chata" });
     toast({ title: "Prijava poslana", description: "Pregledamo korisnika." });
   };
 
@@ -126,10 +136,7 @@ const Chat = () => {
     const { data: match } = await supabase.from("matches").select("*").eq("id", matchId).single();
     if (!match) return;
     const otherId = match.user1_id === user.id ? match.user2_id : match.user1_id;
-    await supabase.from("blocks").insert({
-      blocker_id: user.id,
-      blocked_id: otherId,
-    });
+    await supabase.from("blocks").insert({ blocker_id: user.id, blocked_id: otherId });
     toast({ title: "Korisnik blokiran", description: "Više nećeš vidjeti ovog korisnika." });
     navigate("/matches");
   };
@@ -149,8 +156,21 @@ const Chat = () => {
           <ArrowLeft className="h-6 w-6" />
         </button>
         <img src={otherUser?.image ?? ""} alt={otherUser?.name ?? ""} className="h-10 w-10 rounded-full object-cover" />
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h2 className="font-semibold text-foreground">{otherUser?.name}</h2>
+          <AnimatePresence>
+            {isOtherTyping && (
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.15 }}
+                className="text-xs text-muted-foreground"
+              >
+                tipka...
+              </motion.p>
+            )}
+          </AnimatePresence>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger className="rounded-lg p-2 hover:bg-secondary">
@@ -187,6 +207,33 @@ const Chat = () => {
             </motion.div>
           );
         })}
+
+        {/* Typing indicator bubble */}
+        <AnimatePresence>
+          {isOtherTyping && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.2 }}
+              className="flex justify-start"
+            >
+              <div className="rounded-2xl rounded-bl-md bg-secondary px-4 py-3">
+                <div className="flex gap-1 items-center">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="h-2 w-2 rounded-full bg-muted-foreground"
+                      animate={{ y: [0, -4, 0] }}
+                      transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -194,7 +241,7 @@ const Chat = () => {
         <div className="flex items-center gap-2">
           <Input
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleTyping}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Napiši poruku..."
             className="flex-1 rounded-full border-border bg-secondary"
