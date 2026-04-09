@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Sparkles, Mail, Lock, User, ArrowLeft } from "lucide-react";
@@ -17,8 +17,29 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", name: "" });
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(false);
 
-  if (user) return <Navigate to="/discover" replace />;
+  // Check onboarding status when user is logged in
+  useEffect(() => {
+    if (!user) {
+      setOnboardingChecked(true);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        setOnboardingDone(data?.onboarding_completed ?? false);
+        setOnboardingChecked(true);
+      });
+  }, [user]);
+
+  if (user && onboardingChecked) {
+    return <Navigate to={onboardingDone ? "/discover" : "/onboarding"} replace />;
+  }
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +52,7 @@ const Auth = () => {
           password: form.password,
         });
         if (error) throw error;
-        navigate("/discover");
+        // Navigation handled by useEffect above
       } else {
         const { error } = await supabase.auth.signUp({
           email: form.email,
@@ -49,11 +70,7 @@ const Auth = () => {
         setIsLogin(true);
       }
     } catch (error: any) {
-      toast({
-        title: "Greška",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Greška", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -69,7 +86,6 @@ const Auth = () => {
         toast({ title: "Greška", description: String(result.error), variant: "destructive" });
       }
       if (result.redirected) return;
-      navigate("/discover");
     } catch (error: any) {
       toast({ title: "Greška", description: error.message, variant: "destructive" });
     } finally {
@@ -101,13 +117,7 @@ const Auth = () => {
           {isLogin ? "Dobrodošao/la natrag!" : "Kreiraj svoj SkillSwap račun"}
         </p>
 
-        {/* Google */}
-        <Button
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-          variant="outline"
-          className="mt-6 h-12 w-full rounded-xl text-sm font-medium"
-        >
+        <Button onClick={handleGoogleSignIn} disabled={loading} variant="outline" className="mt-6 h-12 w-full rounded-xl text-sm font-medium">
           <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -123,56 +133,27 @@ const Auth = () => {
           <div className="h-px flex-1 bg-border" />
         </div>
 
-        {/* Email form */}
         <form onSubmit={handleEmailAuth} className="w-full space-y-3">
           {!isLogin && (
             <div className="relative">
               <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Ime"
-                className="rounded-xl pl-10"
-                required={!isLogin}
-              />
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ime" className="rounded-xl pl-10" required={!isLogin} />
             </div>
           )}
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="Email"
-              className="rounded-xl pl-10"
-              required
-            />
+            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" className="rounded-xl pl-10" required />
           </div>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="Lozinka"
-              className="rounded-xl pl-10"
-              minLength={6}
-              required
-            />
+            <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Lozinka" className="rounded-xl pl-10" minLength={6} required />
           </div>
-          <Button
-            type="submit"
-            disabled={loading}
-            className="h-12 w-full rounded-xl text-sm font-semibold gradient-warm text-primary-foreground border-0 shadow-glow"
-          >
+          <Button type="submit" disabled={loading} className="h-12 w-full rounded-xl text-sm font-semibold gradient-warm text-primary-foreground border-0 shadow-glow">
             {loading ? "Učitavanje..." : isLogin ? "Prijavi se" : "Registriraj se"}
           </Button>
         </form>
 
-        <button
-          onClick={() => setIsLogin(!isLogin)}
-          className="mt-4 text-sm text-muted-foreground hover:text-foreground"
-        >
+        <button onClick={() => setIsLogin(!isLogin)} className="mt-4 text-sm text-muted-foreground hover:text-foreground">
           {isLogin ? "Nemaš račun? Registriraj se" : "Već imaš račun? Prijavi se"}
         </button>
       </motion.div>

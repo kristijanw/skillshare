@@ -34,7 +34,6 @@ const Chat = () => {
   useEffect(() => {
     if (!matchId || !user) return;
 
-    // Fetch match info
     const fetchMatch = async () => {
       const { data: match } = await supabase
         .from("matches")
@@ -59,7 +58,6 @@ const Chat = () => {
         image: profile?.profile_image_url ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherId}`,
       });
 
-      // Fetch messages
       const { data: msgs } = await supabase
         .from("messages")
         .select("*")
@@ -72,14 +70,19 @@ const Chat = () => {
 
     fetchMatch();
 
-    // Realtime subscription
+    // Realtime subscription for instant messages
     const channel = supabase
-      .channel(`messages:${matchId}`)
+      .channel(`chat-${matchId}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `match_id=eq.${matchId}` },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
+          const newMsg = payload.new as Message;
+          setMessages((prev) => {
+            // Avoid duplicates
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
         }
       )
       .subscribe();
@@ -145,11 +148,7 @@ const Chat = () => {
         <button onClick={() => navigate("/matches")} className="text-foreground">
           <ArrowLeft className="h-6 w-6" />
         </button>
-        <img
-          src={otherUser?.image ?? ""}
-          alt={otherUser?.name ?? ""}
-          className="h-10 w-10 rounded-full object-cover"
-        />
+        <img src={otherUser?.image ?? ""} alt={otherUser?.name ?? ""} className="h-10 w-10 rounded-full object-cover" />
         <div className="flex-1">
           <h2 className="font-semibold text-foreground">{otherUser?.name}</h2>
         </div>
@@ -176,16 +175,10 @@ const Chat = () => {
               key={msg.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.05, 0.5) }}
+              transition={{ delay: Math.min(i * 0.02, 0.3) }}
               className={`flex ${isMe ? "justify-end" : "justify-start"}`}
             >
-              <div
-                className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
-                  isMe
-                    ? "rounded-br-md bg-primary text-primary-foreground"
-                    : "rounded-bl-md bg-secondary text-secondary-foreground"
-                }`}
-              >
+              <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${isMe ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md bg-secondary text-secondary-foreground"}`}>
                 <p className="text-sm">{msg.content}</p>
                 <p className={`mt-1 text-[10px] ${isMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                   {new Date(msg.created_at).toLocaleTimeString("hr-HR", { hour: "2-digit", minute: "2-digit" })}
