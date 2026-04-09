@@ -87,6 +87,11 @@ const Chat = () => {
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
+          // Hide typing indicator as soon as message arrives
+          if (payload.new.sender_id !== user.id) {
+            setIsOtherTyping(false);
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          }
         }
       )
       .on("broadcast", { event: "typing" }, ({ payload }) => {
@@ -168,7 +173,7 @@ const Chat = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.15 }}
-                className="text-xs text-muted-foreground"
+                className="text-[10px] text-muted-foreground leading-none"
               >
                 tipka...
               </motion.p>

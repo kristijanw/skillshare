@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Shield, Star, MapPin, LogOut, Camera, Save, CheckCircle2, Trash2 } from "lucide-react";
+import { Shield, Star, MapPin, LogOut, Camera, Save, CheckCircle2, Trash2, ShieldCheck, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +18,7 @@ const trustColors = ["", "bg-trust-1", "bg-trust-2", "bg-trust-3"];
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const { profile, teachSkills, learnSkills, loading, refetch } = useProfile();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -143,30 +143,38 @@ const Profile = () => {
   const avatarSrc = imagePreview ?? profile?.profile_image_url ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.user_id}`;
 
   return (
-    <div className="flex h-screen flex-col bg-background overflow-hidden">
-      <div className="relative h-36 gradient-warm" />
-
-      <div className="flex-1 overflow-y-auto">
-      <div className="relative mx-auto -mt-16 w-full max-w-md px-5 pb-28">
-        {/* Avatar */}
-        <div className="relative inline-block">
-          <img src={avatarSrc} alt={profile?.name ?? ""} className="h-28 w-28 rounded-full border-4 border-background object-cover shadow-elevated" />
-          {editing && (
-            <>
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-              <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-1 right-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-card">
-                <Camera className="h-4 w-4" />
-              </button>
-            </>
-          )}
+    <div className="flex h-screen flex-col bg-background">
+      <div className="relative h-24 gradient-warm shrink-0 z-10">
+        {/* Avatar — positioned in gradient so scroll doesn't clip it */}
+        <div className="absolute bottom-0 left-5 translate-y-1/2">
+          <div className="relative inline-block">
+            <img src={avatarSrc} alt={profile?.name ?? ""} className="h-28 w-28 rounded-full border-4 border-background object-cover shadow-elevated" />
+            {editing && (
+              <>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+                <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-1 right-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-card">
+                  <Camera className="h-4 w-4" />
+                </button>
+              </>
+            )}
+          </div>
         </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="relative mx-auto w-full max-w-md px-5 pt-16 pb-28">
 
         {!editing ? (
           /* View mode */
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-3">
-            <h1 className="text-2xl font-bold font-display text-foreground">
-              {profile?.name || "Korisnik"}{profile?.age ? `, ${profile.age}` : ""}
-            </h1>
+            <div className="flex items-start justify-between gap-2">
+              <h1 className="text-2xl font-bold font-display text-foreground">
+                {profile?.name || "Korisnik"}{profile?.age ? `, ${profile.age}` : ""}
+              </h1>
+              <button onClick={() => setEditing(true)} className="shrink-0 rounded-lg border border-border bg-card p-2 shadow-card transition-colors hover:bg-secondary">
+                <Pencil className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
             <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
               {profile?.city && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {profile.city}</span>}
             </div>
@@ -194,18 +202,21 @@ const Profile = () => {
             </div>
 
             <div className="mt-8 space-y-3">
-              <Button onClick={() => setEditing(true)} variant="outline" className="w-full rounded-xl h-12">
-                Uredi profil
-              </Button>
-              <button onClick={handleSignOut} className="flex w-full items-center justify-center gap-2 rounded-xl bg-card p-4 shadow-card text-destructive transition-colors hover:bg-destructive/10">
+              {isAdmin && (
+                <button onClick={() => navigate("/admin")} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary/10 p-4 text-primary transition-colors hover:bg-primary/20">
+                  <ShieldCheck className="h-5 w-5" />
+                  <span className="font-medium">Admin panel</span>
+                </button>
+              )}
+              <button onClick={handleSignOut} className="flex w-full items-center justify-center gap-2 rounded-xl bg-card p-4 shadow-card text-foreground transition-colors hover:bg-secondary">
                 <LogOut className="h-5 w-5" />
                 <span className="font-medium">Odjava</span>
               </button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-card p-4 shadow-card text-destructive transition-colors hover:bg-destructive/10">
-                    <Trash2 className="h-5 w-5" />
-                    <span className="font-medium">Obriši račun</span>
+                  <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-destructive/30 p-3 text-destructive/70 text-sm transition-colors hover:bg-destructive/5">
+                    <Trash2 className="h-4 w-4" />
+                    <span>Obriši račun</span>
                   </button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>

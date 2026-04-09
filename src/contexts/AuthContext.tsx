@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   onboardingCompleted: boolean | null;
+  isAdmin: boolean;
   setOnboardingCompleted: (v: boolean) => void;
   signOut: () => Promise<void>;
 }
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   onboardingCompleted: null,
+  isAdmin: false,
   setOnboardingCompleted: () => {},
   signOut: async () => {},
 });
@@ -26,14 +28,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchOnboarding = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("onboarding_completed")
+      .select("onboarding_completed, is_admin, is_suspended")
       .eq("user_id", userId)
       .single();
-    setOnboardingCompleted(data?.onboarding_completed ?? false);
+
+    // Auto sign out suspended users
+    if ((data as any)?.is_suspended) {
+      await supabase.auth.signOut();
+      return;
+    }
+
+    setOnboardingCompleted((data as any)?.onboarding_completed ?? false);
+    setIsAdmin((data as any)?.is_admin ?? false);
     setLoading(false);
   };
 
@@ -68,7 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, onboardingCompleted, setOnboardingCompleted, signOut }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, onboardingCompleted, isAdmin, setOnboardingCompleted, signOut }}>
       {children}
     </AuthContext.Provider>
   );
