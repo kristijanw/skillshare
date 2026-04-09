@@ -7,7 +7,7 @@ interface Props {
 }
 
 const ProtectedRoute = ({ children, allowUnverified = false }: Props) => {
-  const { user, loading } = useAuth();
+  const { user, loading, onboardingCompleted } = useAuth();
 
   if (loading) {
     return (
@@ -19,9 +19,12 @@ const ProtectedRoute = ({ children, allowUnverified = false }: Props) => {
 
   if (!user) return <Navigate to="/auth" replace />;
 
-  if (!allowUnverified && !user.email_confirmed_at) {
-    return <Navigate to="/verify-email" replace />;
-  }
+  // Onboarding route (allowUnverified) — skip further checks
+  if (allowUnverified) return <>{children}</>;
+
+  if (!user.email_confirmed_at) return <Navigate to="/verify-email" replace />;
+
+  if (onboardingCompleted === false) return <Navigate to="/onboarding" replace />;
 
   return <>{children}</>;
 };

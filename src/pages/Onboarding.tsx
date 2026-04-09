@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Shield, Sparkles, Users, CheckCircle2, Camera, Upload } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Camera, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ const steps = [
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, setOnboardingCompleted } = useAuth();
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [allSkills, setAllSkills] = useState<{ id: string; name: string }[]>([]);
@@ -27,8 +27,14 @@ const Onboarding = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Pending signup credentials (email registration path)
+  const pendingSignup = (() => {
+    try { return JSON.parse(sessionStorage.getItem("pending_signup") || "null"); } catch { return null; }
+  })();
+
   const [formData, setFormData] = useState({
-    name: "",
+    name: pendingSignup?.name || user?.user_metadata?.full_name || "",
     age: "",
     city: "Zagreb",
     bio: "",
@@ -40,10 +46,12 @@ const Onboarding = () => {
     supabase.from("skills").select("id, name").then(({ data }) => {
       if (data) setAllSkills(data);
     });
-    if (user?.user_metadata?.full_name) {
-      setFormData((prev) => ({ ...prev, name: user.user_metadata.full_name }));
+
+    // If neither pending signup nor logged-in user, redirect to auth
+    if (!pendingSignup && !user) {
+      navigate("/auth", { replace: true });
     }
-  }, [user]);
+  }, []);
 
   const toggleSkill = (skill: string, type: "teachSkills" | "learnSkills") => {
     setFormData((prev) => ({
@@ -70,36 +78,46 @@ const Onboarding = () => {
       case 0: return formData.name.trim().length >= 2 && formData.age && Number(formData.age) >= 18;
       case 1: return formData.teachSkills.length > 0;
       case 2: return formData.learnSkills.length > 0;
-      case 3: return true; // image is optional
+      case 3: return true;
       case 4: return true;
       default: return true;
     }
   };
 
   const saveOnboarding = async () => {
-    if (!user) return;
     setSaving(true);
-
     try {
-      let profileImageUrl: string | null = null;
+      let currentUser = user;
 
-      // Upload image if selected
+      // Email registration path: create account now
+      if (pendingSignup && !currentUser) {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: pendingSignup.email,
+          password: pendingSignup.password,
+          options: { data: { full_name: formData.name.trim() } },
+        });
+        if (signUpError) throw signUpError;
+        currentUser = data.user;
+        sessionStorage.removeItem("pending_signup");
+      }
+
+      if (!currentUser) throw new Error("Korisnik nije pronađen");
+
+      // Upload image
+      let profileImageUrl: string | null = null;
       if (imageFile) {
         const ext = imageFile.name.split(".").pop();
-        const path = `${user.id}/avatar.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(path, imageFile, { upsert: true });
-
+        const path = `${currentUser.id}/avatar.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("avatars").upload(path, imageFile, { upsert: true });
         if (!uploadError) {
           const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
           profileImageUrl = urlData.publicUrl;
         }
       }
 
-      // Upsert profile (handles race condition where trigger hasn't created profile yet)
+      // Save profile
       const { error: profileError } = await supabase.from("profiles").upsert({
-        user_id: user.id,
+        user_id: currentUser.id,
         name: formData.name.trim(),
         age: Number(formData.age),
         city: formData.city.trim(),
@@ -109,21 +127,28 @@ const Onboarding = () => {
       }, { onConflict: "user_id" });
       if (profileError) throw profileError;
 
-      // Delete existing skills and re-insert
-      await supabase.from("user_skills").delete().eq("user_id", user.id);
-
+      // Save skills
+      await supabase.from("user_skills").delete().eq("user_id", currentUser.id);
       const skillMap = new Map(allSkills.map((s) => [s.name, s.id]));
       const inserts = [
-        ...formData.teachSkills.filter((n) => skillMap.has(n)).map((n) => ({ user_id: user.id, skill_id: skillMap.get(n)!, type: "teach" as const })),
-        ...formData.learnSkills.filter((n) => skillMap.has(n)).map((n) => ({ user_id: user.id, skill_id: skillMap.get(n)!, type: "learn" as const })),
+        ...formData.teachSkills.filter((n) => skillMap.has(n)).map((n) => ({ user_id: currentUser!.id, skill_id: skillMap.get(n)!, type: "teach" as const })),
+        ...formData.learnSkills.filter((n) => skillMap.has(n)).map((n) => ({ user_id: currentUser!.id, skill_id: skillMap.get(n)!, type: "learn" as const })),
       ];
       if (inserts.length > 0) await supabase.from("user_skills").insert(inserts);
 
+      setOnboardingCompleted(true);
       toast({ title: "Profil spremljen! 🎉" });
-      // Google users are already verified; email/pass users need to verify
-      if (user.email_confirmed_at) {
+
+      // Google users are already verified
+      if (currentUser.email_confirmed_at) {
         navigate("/discover");
       } else {
+        // Send verification email now — after onboarding
+        await supabase.auth.resend({
+          type: "signup",
+          email: currentUser.email!,
+          options: { emailRedirectTo: `${window.location.origin}/discover` },
+        });
         navigate("/verify-email");
       }
     } catch (err: any) {
@@ -155,9 +180,7 @@ const Onboarding = () => {
             {steps.map((_, i) => (
               <div
                 key={i}
-                className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                  i <= step ? "gradient-warm" : "bg-border"
-                }`}
+                className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${i <= step ? "gradient-warm" : "bg-border"}`}
               />
             ))}
           </div>

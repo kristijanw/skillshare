@@ -27,7 +27,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/onboarding" element={<ProtectedRoute allowUnverified><Onboarding /></ProtectedRoute>} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
             <Route path="/matches" element={<ProtectedRoute><Matches /></ProtectedRoute>} />

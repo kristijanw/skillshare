@@ -42,15 +42,8 @@ const Auth = () => {
         if (error) throw error;
         // redirect handled above via user state
       } else {
-        const { error } = await supabase.auth.signUp({
-          email: form.email,
-          password: form.password,
-          options: {
-            data: { full_name: form.name },
-            emailRedirectTo: `${window.location.origin}/discover`,
-          },
-        });
-        if (error) throw error;
+        // Store credentials temporarily — signUp happens at end of onboarding
+        sessionStorage.setItem("pending_signup", JSON.stringify({ email: form.email, password: form.password, name: form.name }));
         navigate("/onboarding");
       }
     } catch (error: any) {
