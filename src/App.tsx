@@ -30,8 +30,13 @@ const App = () => {
       if (!Capacitor.isNativePlatform()) return;
 
       const { App: CapApp } = await import("@capacitor/app");
+      const { Browser } = await import("@capacitor/browser");
+
       handle = await CapApp.addListener("appUrlOpen", async ({ url }) => {
         if (!url.startsWith("hr.liait.skillshare://")) return;
+
+        // Zatvori in-app browser
+        await Browser.close();
 
         // PKCE flow → ?code=...
         if (url.includes("code=")) {

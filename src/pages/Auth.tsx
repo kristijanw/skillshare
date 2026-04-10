@@ -57,15 +57,27 @@ const Auth = () => {
     setFormLoading(true);
     try {
       const { Capacitor } = await import("@capacitor/core");
-      const redirectTo = Capacitor.isNativePlatform()
-        ? "hr.liait.skillshare://"
-        : `${window.location.origin}/discover`;
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo },
-      });
-      if (error) throw error;
+      if (Capacitor.isNativePlatform()) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: "hr.liait.skillshare://",
+            skipBrowserRedirect: true,
+          },
+        });
+        if (error) throw error;
+        if (data?.url) {
+          const { Browser } = await import("@capacitor/browser");
+          await Browser.open({ url: data.url, windowName: "_self" });
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: `${window.location.origin}/discover` },
+        });
+        if (error) throw error;
+      }
     } catch (error: any) {
       toast({ title: "Greška", description: error.message, variant: "destructive" });
       setFormLoading(false);
