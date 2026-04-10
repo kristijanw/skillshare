@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, MapPin, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import WorksSection from "@/components/WorksSection";
 
 const trustLabels = ["", "Email verificiran", "Telefon verificiran", "Potpuno verificiran"];
 const trustColors = ["", "bg-trust-1", "bg-trust-2", "bg-trust-3"];
@@ -24,6 +25,7 @@ const UserProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [teachSkills, setTeachSkills] = useState<string[]>([]);
   const [learnSkills, setLearnSkills] = useState<string[]>([]);
+  const [works, setWorks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,6 +48,9 @@ const UserProfile = () => {
 
       setTeachSkills((skills ?? []).filter((s) => s.type === "teach").map((s) => (s.skills as any)?.name ?? ""));
       setLearnSkills((skills ?? []).filter((s) => s.type === "learn").map((s) => (s.skills as any)?.name ?? ""));
+
+      const { data: worksData } = await supabase.from("works").select("*").eq("user_id", userId).order("created_at");
+      setWorks(worksData ?? []);
       setLoading(false);
     };
 
@@ -131,6 +136,11 @@ const UserProfile = () => {
                 </div>
               )}
             </div>
+            <WorksSection
+              userId={profile.user_id}
+              works={works}
+              editable={false}
+            />
           </motion.div>
         </div>
       </div>

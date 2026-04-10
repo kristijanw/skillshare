@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import BottomNav from "@/components/BottomNav";
+import WorksSection from "@/components/WorksSection";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +32,7 @@ const Profile = () => {
   const [selectedLearn, setSelectedLearn] = useState<string[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [works, setWorks] = useState<any[]>([]);
 
   useEffect(() => {
     if (profile) {
@@ -50,6 +52,13 @@ const Profile = () => {
       if (data) setAllSkills(data);
     });
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("works").select("*").eq("user_id", user.id).order("created_at").then(({ data }) => {
+      if (data) setWorks(data);
+    });
+  }, [user]);
 
   const toggleSkill = (skill: string, type: "teach" | "learn") => {
     if (type === "teach") {
@@ -200,6 +209,13 @@ const Profile = () => {
                 </div>
               )}
             </div>
+
+            <WorksSection
+              userId={user!.id}
+              works={works}
+              editable={true}
+              onWorksChange={setWorks}
+            />
 
             <div className="mt-8 space-y-3">
               {isAdmin && (

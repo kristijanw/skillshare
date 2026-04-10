@@ -2,9 +2,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Flame, MessageCircle, User } from "lucide-react";
 
 const navItems = [
-  { path: "/discover", icon: Flame, label: "Discover" },
-  { path: "/matches", icon: MessageCircle, label: "Matches" },
-  { path: "/profile", icon: User, label: "Profile" },
+  { path: "/discover", icon: Flame, label: "Otkrij" },
+  { path: "/matches", icon: MessageCircle, label: "Poruke" },
+  { path: "/profile", icon: User, label: "Profil" },
 ];
 
 const BottomNav = () => {

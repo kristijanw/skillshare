@@ -70,7 +70,7 @@ const SwipeCard = ({ user, onSwipeLeft, onSwipeRight, isTop }: SwipeCardProps) =
           className="absolute right-6 top-8 z-20 rotate-[20deg] rounded-lg border-4 border-destructive px-4 py-2"
           style={{ opacity: nopeOpacity }}
         >
-          <span className="text-2xl font-bold text-destructive font-display">SKIP</span>
+          <span className="text-2xl font-bold text-destructive font-display">PRESKOČI</span>
         </motion.div>
 
         {/* Info button */}
@@ -112,7 +112,7 @@ const SwipeCard = ({ user, onSwipeLeft, onSwipeRight, isTop }: SwipeCardProps) =
 
           <div className="space-y-2">
             <div className="flex flex-wrap gap-1.5">
-              <span className="text-xs font-medium text-primary-foreground/60">Teaches:</span>
+              <span className="text-xs font-medium text-primary-foreground/60">Uči:</span>
               {user.skillsTeach.map((s) => (
                 <Badge key={s} className="bg-primary/90 text-primary-foreground border-0 text-xs">
                   {s}
@@ -120,7 +120,7 @@ const SwipeCard = ({ user, onSwipeLeft, onSwipeRight, isTop }: SwipeCardProps) =
               ))}
             </div>
             <div className="flex flex-wrap gap-1.5">
-              <span className="text-xs font-medium text-primary-foreground/60">Wants:</span>
+              <span className="text-xs font-medium text-primary-foreground/60">Želi:</span>
               {user.skillsLearn.map((s) => (
                 <Badge key={s} variant="outline" className="border-primary-foreground/30 text-primary-foreground/80 text-xs">
                   {s}

@@ -27,15 +27,45 @@ const Admin = () => {
   const fetchAll = async () => {
     setLoading(true);
 
-    const [{ data: usersData }, { data: reportsData }, { data: blocksData }] = await Promise.all([
+    const [{ data: usersData }, { data: reportsRaw }, { data: blocksRaw }] = await Promise.all([
       supabase.from("profiles").select("*").order("name"),
-      supabase.from("reports").select("*, reporter:profiles!reports_reporter_id_fkey(name), reported:profiles!reports_reported_user_id_fkey(name)").order("created_at", { ascending: false }),
-      supabase.from("blocks").select("*, blocker:profiles!blocks_blocker_id_fkey(name), blocked:profiles!blocks_blocked_id_fkey(name)").order("created_at", { ascending: false }),
+      supabase.from("reports").select("*").order("created_at", { ascending: false }),
+      supabase.from("blocks").select("*").order("created_at", { ascending: false }),
     ]);
 
+    // Fetch profile names for reports
+    const reportUserIds = [...new Set([
+      ...(reportsRaw ?? []).map((r) => r.reporter_id),
+      ...(reportsRaw ?? []).map((r) => r.reported_user_id),
+    ])].filter(Boolean);
+
+    const blockUserIds = [...new Set([
+      ...(blocksRaw ?? []).map((b) => b.blocker_id),
+      ...(blocksRaw ?? []).map((b) => b.blocked_id),
+    ])].filter(Boolean);
+
+    const allIds = [...new Set([...reportUserIds, ...blockUserIds])];
+    const { data: profileNames } = allIds.length > 0
+      ? await supabase.from("profiles").select("user_id, name").in("user_id", allIds)
+      : { data: [] };
+
+    const nameMap = new Map((profileNames ?? []).map((p) => [p.user_id, p.name]));
+
+    const reportsData = (reportsRaw ?? []).map((r) => ({
+      ...r,
+      reporter: { name: nameMap.get(r.reporter_id) ?? "—" },
+      reported: { name: nameMap.get(r.reported_user_id) ?? "—" },
+    }));
+
+    const blocksData = (blocksRaw ?? []).map((b) => ({
+      ...b,
+      blocker: { name: nameMap.get(b.blocker_id) ?? "—" },
+      blocked: { name: nameMap.get(b.blocked_id) ?? "—" },
+    }));
+
     setUsers(usersData ?? []);
-    setReports(reportsData ?? []);
-    setBlocks(blocksData ?? []);
+    setReports(reportsData);
+    setBlocks(blocksData);
     setLoading(false);
   };
 
