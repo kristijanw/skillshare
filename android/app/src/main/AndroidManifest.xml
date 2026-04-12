@@ -50,7 +50,6 @@
     <!-- Isključi TV, Auto, XR -->
     <uses-feature android:name="android.hardware.type.television" android:required="false" />
     <uses-feature android:name="android.hardware.type.automotive" android:required="false" />
-    <uses-feature android:name="android.hardware.type.watch" android:required="false" />
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
