@@ -17,10 +17,15 @@ const VerifyEmail = () => {
 
   const handleResend = async () => {
     setResending(true);
+    const { Capacitor } = await import("@capacitor/core");
+    const emailRedirectTo = Capacitor.isNativePlatform()
+      ? "hr.liait.skillshare://"
+      : `${window.location.origin}/discover`;
+
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: user.email!,
-      options: { emailRedirectTo: `${window.location.origin}/discover` },
+      options: { emailRedirectTo },
     });
     setResending(false);
     if (error) {

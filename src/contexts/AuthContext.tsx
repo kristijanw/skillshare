@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const fetchOnboarding = async (userId: string) => {
+  const fetchOnboarding = async (userId: string, emailConfirmed?: boolean) => {
     const { data } = await supabase
       .from("profiles")
       .select("onboarding_completed, is_admin, is_suspended")
@@ -43,7 +43,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    setOnboardingCompleted((data as any)?.onboarding_completed ?? false);
+    const completed = (data as any)?.onboarding_completed ?? false;
+
+    // After email verification: complete pending onboarding automatically
+    if (!completed && emailConfirmed) {
+      const stored = localStorage.getItem("pending_onboarding");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.userId === userId) {
+            localStorage.removeItem("pending_onboarding");
+
+            // Save profile data
+            await supabase.from("profiles").update({
+              age: Number(parsed.age),
+              city: parsed.city,
+              bio: parsed.bio,
+              onboarding_completed: true,
+            }).eq("user_id", userId);
+
+            // Save skills
+            const { data: skillsData } = await supabase.from("skills").select("id, name");
+            if (skillsData) {
+              const skillMap = new Map(skillsData.map((s) => [s.name, s.id]));
+              const inserts = [
+                ...(parsed.teachSkills ?? []).filter((n: string) => skillMap.has(n)).map((n: string) => ({ user_id: userId, skill_id: skillMap.get(n)!, type: "teach" })),
+                ...(parsed.learnSkills ?? []).filter((n: string) => skillMap.has(n)).map((n: string) => ({ user_id: userId, skill_id: skillMap.get(n)!, type: "learn" })),
+              ];
+              if (inserts.length > 0) await supabase.from("user_skills").insert(inserts);
+            }
+
+            setOnboardingCompleted(true);
+            setIsAdmin((data as any)?.is_admin ?? false);
+            setLoading(false);
+            return;
+          }
+        } catch {}
+      }
+    }
+
+    setOnboardingCompleted(completed);
     setIsAdmin((data as any)?.is_admin ?? false);
     setLoading(false);
   };
@@ -53,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        fetchOnboarding(session.user.id);
+        fetchOnboarding(session.user.id, !!session.user.email_confirmed_at);
       } else {
         setLoading(false);
       }
@@ -63,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session?.user) {
-        fetchOnboarding(session.user.id);
+        fetchOnboarding(session.user.id, !!session.user.email_confirmed_at);
       } else {
         setOnboardingCompleted(null);
         setLoading(false);

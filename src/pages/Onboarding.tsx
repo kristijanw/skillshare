@@ -24,6 +24,7 @@ const Onboarding = () => {
   const [step, setStep] = useState(0);
   const [allSkills, setAllSkills] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [autoSubmitData, setAutoSubmitData] = useState<any>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,8 +51,59 @@ const Onboarding = () => {
     // If neither pending signup nor logged-in user, redirect to auth
     if (!pendingSignup && !user) {
       navigate("/auth", { replace: true });
+      return;
     }
-  }, []);
+
+    // After email verification: user has session, check for stored onboarding data
+    if (user && user.email_confirmed_at && !pendingSignup) {
+      const stored = localStorage.getItem("pending_onboarding");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.userId === user.id) {
+            localStorage.removeItem("pending_onboarding");
+            setAutoSubmitData(parsed);
+          }
+        } catch {}
+      }
+    }
+  }, [user]);
+
+  // Auto-submit after verification once skills are loaded
+  useEffect(() => {
+    if (!autoSubmitData || allSkills.length === 0 || !user) return;
+    const data = autoSubmitData;
+    setAutoSubmitData(null);
+
+    const run = async () => {
+      setSaving(true);
+      try {
+        const { error: profileError } = await supabase.from("profiles").update({
+          age: Number(data.age),
+          city: data.city,
+          bio: data.bio,
+          onboarding_completed: true,
+        }).eq("user_id", user.id);
+        if (profileError) throw profileError;
+
+        await supabase.from("user_skills").delete().eq("user_id", user.id);
+        const skillMap = new Map(allSkills.map((s) => [s.name, s.id]));
+        const inserts = [
+          ...(data.teachSkills ?? []).filter((n: string) => skillMap.has(n)).map((n: string) => ({ user_id: user.id, skill_id: skillMap.get(n)!, type: "teach" as const })),
+          ...(data.learnSkills ?? []).filter((n: string) => skillMap.has(n)).map((n: string) => ({ user_id: user.id, skill_id: skillMap.get(n)!, type: "learn" as const })),
+        ];
+        if (inserts.length > 0) await supabase.from("user_skills").insert(inserts);
+
+        setOnboardingCompleted(true);
+        navigate("/discover");
+      } catch (err: any) {
+        toast({ title: "Greška", description: err.message, variant: "destructive" });
+      } finally {
+        setSaving(false);
+      }
+    };
+    run();
+  }, [autoSubmitData, allSkills, user]);
 
   const toggleSkill = (skill: string, type: "teachSkills" | "learnSkills") => {
     setFormData((prev) => ({
@@ -91,14 +143,36 @@ const Onboarding = () => {
 
       // Email registration path: create account now
       if (pendingSignup && !currentUser) {
+        const { Capacitor } = await import("@capacitor/core");
+        const emailRedirectTo = Capacitor.isNativePlatform()
+          ? "hr.liait.skillshare://"
+          : `${window.location.origin}/discover`;
+
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: pendingSignup.email,
           password: pendingSignup.password,
-          options: { data: { full_name: formData.name.trim() } },
+          options: {
+            data: { full_name: formData.name.trim() },
+            emailRedirectTo,
+          },
         });
         if (signUpError) throw signUpError;
         currentUser = data.user;
         sessionStorage.removeItem("pending_signup");
+
+        // Email confirmation required — no session yet, save data for later
+        if (!data.session && currentUser) {
+          localStorage.setItem("pending_onboarding", JSON.stringify({
+            userId: currentUser.id,
+            age: formData.age,
+            city: formData.city,
+            bio: formData.bio,
+            teachSkills: formData.teachSkills,
+            learnSkills: formData.learnSkills,
+          }));
+          navigate("/verify-email");
+          return;
+        }
       }
 
       if (!currentUser) throw new Error("Korisnik nije pronađen");
@@ -143,12 +217,6 @@ const Onboarding = () => {
       if (currentUser.email_confirmed_at) {
         navigate("/discover");
       } else {
-        // Send verification email now — after onboarding
-        await supabase.auth.resend({
-          type: "signup",
-          email: currentUser.email!,
-          options: { emailRedirectTo: `${window.location.origin}/discover` },
-        });
         navigate("/verify-email");
       }
     } catch (err: any) {

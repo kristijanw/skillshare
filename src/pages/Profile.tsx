@@ -130,14 +130,25 @@ const Profile = () => {
   const handleDeleteAccount = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      await supabase.functions.invoke("delete-unregistered-user", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+      if (!session) throw new Error("Nisi prijavljen");
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-unregistered-user`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
       });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error ?? `Status ${response.status}`);
+      }
+
       await signOut();
       navigate("/");
       toast({ title: "Račun obrisan" });
     } catch (err: any) {
-      toast({ title: "Greška", description: err.message, variant: "destructive" });
+      toast({ title: "Greška pri brisanju računa", description: err.message, variant: "destructive" });
     }
   };
 

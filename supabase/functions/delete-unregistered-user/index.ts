@@ -15,34 +15,38 @@ Deno.serve(async (req) => {
   }
 
   const authHeader = req.headers.get("Authorization");
-  console.log("Auth header present:", !!authHeader);
-
   if (!authHeader) {
-    console.error("No authorization header");
-    return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
   }
 
+  // Client to verify the requesting user
+  const supabaseClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
+
+  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+  if (userError || !user) {
+    console.error("User error:", userError?.message);
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+  }
+
+  console.log("Deleting user:", user.id);
+
+  // Admin client to delete the user
   const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  const token = authHeader.replace("Bearer ", "");
-  const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-
-  console.log("User found:", user?.id, "Error:", userError?.message);
-
-  if (userError || !user) {
-    return new Response("Unauthorized", { status: 401, headers: corsHeaders });
-  }
-
   const { error } = await supabaseAdmin.auth.admin.deleteUser(user.id);
-  console.log("Delete result - error:", error?.message ?? "none");
-
   if (error) {
+    console.error("Delete error:", error.message);
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   }
 
+  console.log("User deleted successfully:", user.id);
   return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
 });
