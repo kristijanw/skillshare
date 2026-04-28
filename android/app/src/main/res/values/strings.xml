@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Skillshare</string>
-    <string name="title_activity_main">Skillshare</string>
+    <string name="app_name">SkillSwap</string>
+    <string name="title_activity_main">SkillSwap</string>
     <string name="package_name">com.kristijanmarijic.skillshare</string>
     <string name="custom_url_scheme">com.kristijanmarijic.skillshare</string>
 </resources>
