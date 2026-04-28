@@ -32,5 +32,5 @@ The platform is built around a local learning community where every user can be 
 ---
 
 <div align="center">
-  <sub>Izrađeno s ❤️ u Hrvatskoj &nbsp;·&nbsp; Built with ❤️ in Croatia</sub>
+  <sub>Built with ❤️ in Croatia</sub>
 </div>
